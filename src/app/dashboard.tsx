@@ -23,6 +23,11 @@ export default function CatalogDashboard({ user }: CatalogDashboardProps) {
   const [categoriesCount, setCategoriesCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Nuevos estados para cifrado/descifrado
+  const [ciphertext, setCiphertext] = useState<string>('');
+  const [plaintext, setPlaintext] = useState<string>('');
+  const [decrypting, setDecrypting] = useState<boolean>(false);
+
   useEffect(() => {
     checkBackendConnection();
   }, []);
@@ -57,6 +62,34 @@ export default function CatalogDashboard({ user }: CatalogDashboardProps) {
       router.push('/categories');
     } else {
       alert('⚠️ Please verify that the backend is running before continuing.');
+    }
+  };
+
+  const handleDecryptFlow = async () => {
+    try {
+      setDecrypting(true);
+      // Obtener ciphertext desde Astro
+      const respEnc = await fetch('http://localhost:4321/api/encrypt', {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!respEnc.ok) throw new Error(`Encrypt failed: ${respEnc.status}`);
+      const { ciphertext } = await respEnc.json();
+      setCiphertext(ciphertext);
+
+      // Desencriptar en este endpoint
+      const respDec = await fetch('/api/decrypt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ciphertext })
+      });
+      if (!respDec.ok) throw new Error(`Decrypt failed: ${respDec.status}`);
+      const { plaintext } = await respDec.json();
+      setPlaintext(plaintext);
+    } catch (err) {
+      console.error(err);
+      alert(`Error in decrypt flow: ${err instanceof Error ? err.message : err}`);
+    } finally {
+      setDecrypting(false);
     }
   };
 
@@ -144,6 +177,38 @@ export default function CatalogDashboard({ user }: CatalogDashboardProps) {
               </p>
             )}
           </div>
+
+          {(
+              <div className="my-8 text-center">
+                <button
+                    onClick={handleDecryptFlow}
+                    disabled={decrypting}
+                    className={`px-6 py-2 font-medium rounded-md transition ${
+                        decrypting
+                            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                            : 'bg-blue-600 text-white hover:bg-blue-500'
+                    }`}
+                >
+                  {decrypting ? '🔄 Procesando...' : '🔐 Consumir datos cifrados'}
+                </button>
+
+                {/* Mostrar resultados */}
+                {ciphertext && (
+                    <div className="mt-4 text-left bg-white p-4 rounded-md shadow">
+                      <h3 className="font-semibold text-gray-900">Cifrado (Base64):</h3>
+                      <pre className="break-all overflow-x-auto text-sm text-gray-900 bg-gray-100 p-2 rounded">{ciphertext}</pre>
+                    </div>
+                )}
+                {plaintext && (
+                    <div className="mt-4 text-left bg-white p-4 rounded-md shadow">
+                      <h3 className="font-semibold text-gray-900">Descifrado (JSON):</h3>
+                      <pre className="break-all text-sm text-gray-900 bg-gray-100 p-2 rounded">
+                  {JSON.stringify(JSON.parse(plaintext), null, 2)}
+                </pre>
+                    </div>
+                )}
+              </div>
+          )}
 
           {/* Start button */}
           <button

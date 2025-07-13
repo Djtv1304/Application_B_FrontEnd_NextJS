@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@azure/identity": "^4.10.2",
+    "@azure/keyvault-keys": "^4.10.0",
     "@workos-inc/authkit-nextjs": "^2.4.2",
     "axios": "^1.10.0",
     "next": "15.3.5",
